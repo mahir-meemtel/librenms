@@ -1,0 +1,138 @@
+<?php
+namespace App\Http\Controllers\Install;
+
+use App\Http\Controllers\Controller;
+use ObzoraNMS\DB\Eloquent;
+use ObzoraNMS\Interfaces\InstallerStep;
+
+class InstallationController extends Controller
+{
+    protected $connection = 'setup';
+    protected $step;
+    protected $steps = [
+        'checks' => ChecksController::class,
+        'database' => DatabaseController::class,
+        'user' => MakeUserController::class,
+        'finish' => FinalizeController::class,
+    ];
+
+    public function redirectToFirst()
+    {
+        $step = collect($this->filterActiveSteps())->keys()->first(null, 'checks');
+
+        return redirect()->route("install.$step");
+    }
+
+    public function redirectToIncomplete()
+    {
+        foreach ($this->filterActiveSteps() as $step => $controller) {
+            /** @var InstallerStep $controller */
+            if (! $controller->complete()) {
+                return redirect()->route("install.$step");
+            }
+        }
+
+        return redirect()->route('install.checks');
+    }
+
+    public function invalid()
+    {
+        abort(404);
+    }
+
+    public function stepsCompleted()
+    {
+        return response()->json($this->stepStatus());
+    }
+
+    /**
+     * Init step info and return false if previous steps have not been completed.
+     *
+     * @return bool if all previous steps have been completed
+     */
+    final protected function initInstallStep()
+    {
+        $this->filterActiveSteps();
+        $this->configureDatabase();
+
+        foreach ($this->stepStatus() as $step => $status) {
+            if ($step == $this->step) {
+                return true;
+            }
+
+            if (! $status['complete']) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    final protected function markStepComplete()
+    {
+        if (! $this->stepCompleted($this->step)) {
+            session(["install.$this->step" => true]);
+            session()->save();
+        }
+    }
+
+    final protected function stepCompleted(string $step)
+    {
+        return (bool) session("install.$step");
+    }
+
+    final protected function formatData($data = [])
+    {
+        $data['steps'] = $this->hydrateControllers();
+        $data['step'] = $this->step;
+
+        return $data;
+    }
+
+    protected function configureDatabase()
+    {
+        $db = session('db');
+        if (! empty($db)) {
+            Eloquent::setConnection(
+                $this->connection,
+                $db['host'] ?? 'localhost',
+                $db['username'] ?? 'obzora',
+                $db['password'] ?? null,
+                $db['database'] ?? 'obzora',
+                $db['port'] ?? 3306,
+                $db['socket'] ?? null
+            );
+            config('database.default', $this->connection);
+        }
+    }
+
+    protected function filterActiveSteps()
+    {
+        if (is_string(config('obzora.install'))) {
+            $this->steps = array_intersect_key($this->steps, array_flip(explode(',', config('obzora.install'))));
+        }
+
+        return $this->steps;
+    }
+
+    protected function hydrateControllers()
+    {
+        $this->steps = array_map(function ($class) {
+            return is_object($class) ? $class : app()->make($class);
+        }, $this->steps);
+
+        return $this->steps;
+    }
+
+    private function stepStatus()
+    {
+        $this->hydrateControllers();
+
+        return array_map(function (InstallerStep $controller) {
+            return [
+                'enabled' => $controller->enabled(),
+                'complete' => $controller->complete(),
+            ];
+        }, $this->steps);
+    }
+}

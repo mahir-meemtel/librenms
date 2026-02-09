@@ -1,0 +1,108 @@
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class UserPref extends BaseModel
+{
+    public $timestamps = false;
+    public $incrementing = false;
+    protected $table = 'users_prefs';
+    /** @var array */
+    protected $primaryKey = ['user_id', 'pref'];
+    protected $fillable = ['user_id', 'pref', 'value'];
+
+    // ---- Helper Functions ----
+    public static function getPref(User $user, $pref)
+    {
+        if ($user->relationLoaded('preferences')) {
+            return optional($user->preferences->firstWhere('pref', $pref))->value;
+        }
+
+        return $user->preferences()->where('pref', $pref)->value('value');
+    }
+
+    public static function setPref(User $user, $pref, $value)
+    {
+        return UserPref::updateOrCreate(['user_id' => $user->user_id, 'pref' => $pref], ['value' => $value]);
+    }
+
+    public static function forgetPref(User $user, $pref)
+    {
+        return $user->preferences()->where('pref', $pref)->delete();
+    }
+
+    // ---- Accessors/Mutators ----
+
+    public function getValueAttribute($value)
+    {
+        $decoded = json_decode($value, true);
+        if (json_last_error() == JSON_ERROR_NONE) {
+            return $decoded;
+        }
+
+        return $value;
+    }
+
+    public function setValueAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['value'] = json_encode($value);
+        } else {
+            $this->attributes['value'] = $value;
+        }
+    }
+
+    // ---- Query Scopes ----
+
+    public function scopePref($query, $pref)
+    {
+        return $query->where('pref', $pref);
+    }
+
+    // ---- Define Relationships ----
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Set the keys for a save update query. (no primary key)
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function setKeysForSaveQuery($query)
+    {
+        /** @var array */
+        $keys = $this->getKeyName();
+
+        foreach ($keys as $keyName) {
+            $query->where($keyName, '=', $this->getKeyForSaveQuery($keyName));
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get the primary key value for a save query. (no primary key)
+     *
+     * @param  mixed  $keyName
+     * @return mixed
+     */
+    protected function getKeyForSaveQuery($keyName = null)
+    {
+        if (is_null($keyName)) {
+            $keyName = $this->getKeyName();
+        }
+
+        if (isset($this->original[$keyName])) {
+            return $this->original[$keyName];
+        }
+
+        return $this->getAttribute($keyName);
+    }
+}

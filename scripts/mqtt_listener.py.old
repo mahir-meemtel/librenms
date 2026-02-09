@@ -1,0 +1,44 @@
+import paho.mqtt.client as mqtt
+import subprocess
+import json
+
+# --- Configuration ---
+BROKER = "84.46.248.97"
+PORT = 1883
+TOPIC = "obzora/cmd"
+USER = "mqttobzora"
+PASS = "meemtel@123"
+LNMS_PATH = "/opt/obzora/lnms"
+
+def on_message(client, userdata, msg):
+    try:
+        # Expecting a payload like: {"command": "device:poll", "args": "my-router"}
+        payload = json.loads(msg.payload.decode())
+        command = payload.get("command")
+        args = payload.get("args", "")
+
+        # Security: Basic sanitization or whitelist
+        # You should strictly limit which commands are allowed!
+        allowed_commands = ["device:poll", "device:discover", "alarm:clear", "about"]
+        
+        if command in allowed_commands:
+            full_cmd = f"{LNMS_PATH} {command} {args}"
+            print(f"Executing: {full_cmd}")
+            
+            result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True)
+            print(f"Output: {result.stdout}")
+        else:
+            print(f"Unauthorized command: {command}")
+
+    except Exception as e:
+        print(f"Error processing message: {e} {msg.payload}")
+
+client = mqtt.Client()
+client.username_pw_set(USER, PASS)
+client.on_message = on_message
+
+client.connect(BROKER, PORT)
+client.subscribe(TOPIC)
+print(f"Listening for commands on {TOPIC}...")
+client.loop_forever()
+

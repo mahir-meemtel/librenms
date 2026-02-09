@@ -1,0 +1,11 @@
+[Unit]
+Description=ObzoraNMS Scheduler
+
+[Service]
+Type=oneshot
+StandardOutput=null
+StandardError=null
+WorkingDirectory=/opt/obzora/
+ExecStart=/usr/bin/env php artisan schedule:run --no-ansi --no-interaction
+User=obzora
+Group=obzora

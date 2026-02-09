@@ -1,0 +1,48 @@
+<?php
+namespace App\Http\Controllers\Select;
+
+class SyslogController extends SelectController
+{
+    /**
+     * Defines validation rules (will override base validation rules for select2 responses too)
+     *
+     * @return array
+     */
+    protected function rules()
+    {
+        return [
+            'field' => 'required|in:program,priority',
+            'device' => 'nullable|int',
+        ];
+    }
+
+    /**
+     * Defines search fields will be searched in order
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return array
+     */
+    protected function searchFields($request)
+    {
+        return [$request->get('field')];
+    }
+
+    /**
+     * Defines the base query for this resource
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
+     */
+    protected function baseQuery($request)
+    {
+        /** @var \Illuminate\Database\Eloquent\Builder $query */
+        $query = \App\Models\Syslog::hasAccess($request->user())
+            ->select($request->get('field'))->distinct();
+
+        if ($device_id = $request->get('device')) {
+            $query->where('device_id', $device_id);
+        }
+
+        return $query;
+    }
+}

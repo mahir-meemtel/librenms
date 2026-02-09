@@ -1,0 +1,12 @@
+# /etc/systemd/system/obzora-irc.service 
+
+[Unit]
+Description=Obzora IRC bot
+After=network.target
+
+[Service]
+ExecStart=/opt/obzora/irc.php
+Restart=always
+
+[Install]
+WantedBy=default.target

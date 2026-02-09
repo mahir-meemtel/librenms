@@ -1,0 +1,52 @@
+# -----------------------
+# Dependencies
+# -----------------------
+/vendor/
+/node_modules/
+
+# -----------------------
+# Runtime & logs
+# -----------------------
+/logs/
+/bootstrap/cache/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/rrd/
+/rrd_cached/        # ObzoraNMS cached RRD files
+/rrdtmp/            # ObzoraNMS temporary RRD files
+/snmp-cache/        # SNMP cache files
+
+# -----------------------
+# Environment & config
+# -----------------------
+.env
+config.php
+
+# -----------------------
+# Cursor / editor temp files
+# -----------------------
+*.cursor
+*.code-elevated-*
+.vscode/
+
+# -----------------------
+# OS / system files
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# Backups / archives
+# -----------------------
+*.tar.gz
+*.zip
+/logs/*.log
+__pycache__/
+*.pyc
+
+# -----------------------
+# ObzoraNMS DB dumps / local backups
+# -----------------------
+*.sql
+*.sql.gz

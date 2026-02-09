@@ -1,0 +1,14 @@
+33   */6  * * *   obzora    /opt/obzora/cronic /opt/obzora/discovery-wrapper.py 1
+*/5  *    * * *   obzora    /opt/obzora/discovery.php -h new >> /dev/null 2>&1
+
+*/5  *    * * *   obzora    /opt/obzora/cronic /opt/obzora/poller-wrapper.py 16
+*    *    * * *   obzora    /opt/obzora/alerts.php >> /dev/null 2>&1
+
+*/5  *    * * *   obzora    /opt/obzora/poll-billing.php >> /dev/null 2>&1
+01   *    * * *   obzora    /opt/obzora/billing-calculate.php >> /dev/null 2>&1
+*/5  *    * * *   obzora    /opt/obzora/check-services.php >> /dev/null 2>&1
+
+0 * * * * obzora php /opt/obzora/check.php >> /dev/null 2>&1
+
+# Daily maintenance script. DO NOT DISABLE!
+19   0    * * *   obzora    /opt/obzora/daily.sh >> /dev/null 2>&1

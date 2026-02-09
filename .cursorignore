@@ -1,0 +1,24 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Runtime files
+/logs/
+/bootstrap/cache/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/rrd/
+
+# Environment/config
+.env
+config.php
+
+# Editor temp files
+*.cursor
+*.code-elevated-*
+.vscode/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

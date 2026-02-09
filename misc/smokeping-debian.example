@@ -1,0 +1,6 @@
+#! /usr/bin/env bash
+
+sudo -u obzora /opt/obzora/lnms smokeping:generate --targets > /etc/smokeping/config.d/obzora-targets.conf
+sudo -u obzora /opt/obzora/lnms smokeping:generate --probes  > /etc/smokeping/config.d/obzora-probes.conf
+
+systemctl reload smokeping > /dev/null 2<&1

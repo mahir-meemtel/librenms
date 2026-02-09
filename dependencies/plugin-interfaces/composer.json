@@ -1,0 +1,15 @@
+{
+    "name": "obzora/plugin-interfaces",
+    "description": "Interfaces required to create a ObzoraNMS Plugin",
+    "type": "library",
+    "license": "0BSD",
+    "homepage": "https://www.obzora.meemtel.com/",
+    "autoload": {
+        "psr-4": {
+            "ObzoraNMS\\Interfaces\\Plugins\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.1"
+    }
+}

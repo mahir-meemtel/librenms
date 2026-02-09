@@ -1,0 +1,77 @@
+<?php
+namespace ObzoraNMS\Alert\Transport;
+
+use ObzoraNMS\Alert\Transport;
+use ObzoraNMS\Exceptions\AlertTransportDeliveryException;
+use ObzoraNMS\Util\Http;
+
+class Signalwire extends Transport
+{
+    protected string $name = 'SignalWire';
+
+    public function deliverAlert(array $alert_data): bool
+    {
+        $url = 'https://' . $this->config['signalwire-spaceUrl'] . '.signalwire.com/api/laml/2010-04-01/Accounts/' . $this->config['signalwire-project-id'] . '/Messages.json';
+
+        $data = [
+            'From' => $this->config['signalwire-sender'],
+            'To' => $this->config['signalwire-to'],
+            'Body' => $alert_data['title'],
+        ];
+
+        $res = Http::client()->asForm()
+            ->withBasicAuth($this->config['signalwire-project-id'], $this->config['signalwire-token'])
+            ->post($url, $data);
+
+        if ($res->successful()) {
+            return true;
+        }
+
+        throw new AlertTransportDeliveryException($alert_data, $res->status(), $res->body(), $alert_data['title'], $data);
+    }
+
+    public static function configTemplate(): array
+    {
+        return [
+            'config' => [
+                [
+                    'title' => 'Space URL',
+                    'name' => 'signalwire-spaceUrl',
+                    'descr' => 'SignalWire Space URL (Example: myspace).',
+                    'type' => 'text',
+                ],
+                [
+                    'title' => 'SignalWire Project ID',
+                    'name' => 'signalwire-project-id',
+                    'descr' => 'SignalWire Project ID  ',
+                    'type' => 'text',
+                ],
+                [
+                    'title' => 'Token',
+                    'name' => 'signalwire-token',
+                    'descr' => 'SignalWire Account Token ',
+                    'type' => 'password',
+                ],
+                [
+                    'title' => 'Mobile Number',
+                    'name' => 'signalwire-to',
+                    'descr' => 'Mobile number to SMS(Example: +14443332222)',
+                    'type' => 'text',
+                ],
+                [
+                    'title' => 'SignalWire SMS Number',
+                    'name' => 'signalwire-sender',
+                    'descr' => 'SignalWire sending number (Example: +12223334444)',
+                    'type' => 'text',
+                ],
+            ],
+            'validation' => [
+                'signalwire-spaceUrl' => 'required|string',
+                'signalwire-project-id' => 'required|string',
+                'signalwire-token' => 'required|string',
+                'signalwire-to' => 'required',
+                'signalwire-sender' => 'required',
+            ],
+        ];
+    }
+}

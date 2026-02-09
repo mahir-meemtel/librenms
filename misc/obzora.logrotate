@@ -1,0 +1,11 @@
+# /etc/logrotate.d/obzora
+/opt/obzora/logs/*log {
+    su obzora obzora
+    weekly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 664 obzora obzora
+}

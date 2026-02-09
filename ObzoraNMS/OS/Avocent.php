@@ -1,0 +1,41 @@
+<?php
+namespace ObzoraNMS\OS;
+
+use App\Models\Device;
+use Illuminate\Support\Str;
+use ObzoraNMS\Interfaces\Discovery\OSDiscovery;
+use ObzoraNMS\OS;
+
+class Avocent extends OS implements OSDiscovery
+{
+    public function discoverOS(Device $device): void
+    {
+        $avocent_tmp = snmp_get_multi_oid($this->getDeviceArray(), [
+            'pmProductModel.0',
+            'pmSerialNumber.0',
+            'pmFirmwareVersion.0',
+        ], '-OUQs', 'PM-MIB');
+
+        $hardware = $avocent_tmp['pmProductModel.0'] ?? null;
+        $serial = $avocent_tmp['pmSerialNumber.0'] ?? null;
+        $version = $avocent_tmp['pmFirmwareVersion.0'] ?? null;
+
+        if (empty($hardware)) {
+            if (Str::startsWith($device->sysObjectID, '.1.3.6.1.4.1.10418.16')) {
+                $avocent_oid = '.1.3.6.1.4.1.10418.16.2.1';
+            } elseif (Str::startsWith($device->sysObjectID, '.1.3.6.1.4.1.10418.26')) {
+                $avocent_oid = '.1.3.6.1.4.1.10418.26.2.1';
+            }
+            if (isset($avocent_oid)) {
+                $avocent_tmp = snmp_get_multi_oid($this->getDeviceArray(), "$avocent_oid.2.0 $avocent_oid.4.0 $avocent_oid.7.0");
+                $hardware = explode(' ', $avocent_tmp["$avocent_oid.2.0"] ?? '', 2)[0] ?: null;
+                $serial = $avocent_tmp["$avocent_oid.4.0"] ?? null;
+                $version = $avocent_tmp["$avocent_oid.7.0"] ?? null;
+            }
+        }
+
+        $device->hardware = $hardware ?? null;
+        $device->serial = $serial ?? null;
+        $device->version = $version ?? null;
+    }
+}

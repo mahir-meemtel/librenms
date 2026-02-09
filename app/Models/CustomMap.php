@@ -1,0 +1,121 @@
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Permissions;
+
+class CustomMap extends BaseModel
+{
+    use HasFactory;
+    protected $primaryKey = 'custom_map_id';
+    protected $fillable = [
+        'name',
+        'menu_group',
+        'width',
+        'height',
+        'node_align',
+        'reverse_arrows',
+        'edge_separation',
+        'legend_x',
+        'legend_y',
+        'legend_steps',
+        'legend_font_size',
+        'legend_hide_invalid',
+        'legend_hide_overspeed',
+        'background_type',
+        'background_data',
+    ];
+
+    /**
+     * @return array{options: 'array', legend_colours: 'array', newnodeconfig: 'array', newedgeconfig: 'array', background_data: 'array'}
+     */
+    protected function casts(): array
+    {
+        return [
+            'options' => 'array',
+            'legend_colours' => 'array',
+            'newnodeconfig' => 'array',
+            'newedgeconfig' => 'array',
+            'background_data' => 'array',
+        ];
+    }
+
+    /**
+     * Get background data intended to be passed to javascript to configure the background
+     */
+    public function getBackgroundConfig(): array
+    {
+        $config = $this->background_data ?? [];
+        $config['engine'] = \App\Facades\ObzoraConfig::get('geoloc.engine');
+        $config['api_key'] = \App\Facades\ObzoraConfig::get('geoloc.api_key');
+        $config['tile_url'] = \App\Facades\ObzoraConfig::get('leaflet.tile_url');
+        $config['image_url'] = route('maps.custom.background', ['map' => $this->custom_map_id]) . '?version=' . ($config['version'] ?? 0);
+
+        return $config;
+    }
+
+    public function hasReadAccess(User $user): bool
+    {
+        $device_ids = $this->nodes()->whereNotNull('device_id')->pluck('device_id');
+
+        // Restricted users can only view maps that have at least one device
+        if (count($device_ids) === 0) {
+            return false;
+        }
+
+        // Deny access if we don't have permission on any device
+        foreach ($device_ids as $device_id) {
+            if (! Permissions::canAccessDevice($device_id, $user)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function scopeHasAccess($query, User $user)
+    {
+        if ($user->hasGlobalRead()) {
+            return $query;
+        }
+
+        // Allow only if the user has access to all devices on the map
+        return $query->withCount([
+            'nodes as device_nodes_count' => function (Builder $q) {
+                $q->whereNotNull('device_id');
+            },
+            'nodes as device_nodes_allowed_count' => function (Builder $q) use ($user) {
+                $this->hasDeviceAccess($q, $user, 'custom_map_nodes');
+            },
+        ])
+            ->havingRaw('device_nodes_count = device_nodes_allowed_count')
+            ->having('device_nodes_count', '>', 0);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\CustomMapNode, $this>
+     */
+    public function nodes(): HasMany
+    {
+        return $this->hasMany(CustomMapNode::class, 'custom_map_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\CustomMapEdge, $this>
+     */
+    public function edges(): HasMany
+    {
+        return $this->hasMany(CustomMapEdge::class, 'custom_map_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\App\Models\CustomMapBackground, $this>
+     */
+    public function background(): HasOne
+    {
+        return $this->hasOne(CustomMapBackground::class, 'custom_map_id');
+    }
+}
